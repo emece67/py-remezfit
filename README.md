@@ -1,6 +1,6 @@
 # py-remezfit
 
-A direct and basic implementation of the Remez algorithm to fit polynomials to functions in an equi-ripple sense (or minimax). Wrote in Python using `numpy`, `scipy` and `matplotlib`.
+A direct and basic implementation of the Remez algorithm to fit polynomials to functions in an equi-ripple sense (or minimax). Written in Python using `numpy`, `scipy` and `matplotlib`.
 
 There is a single Python file here `remezfit.py` providing module `remezfit`. This module:
 
