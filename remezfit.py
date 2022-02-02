@@ -18,9 +18,9 @@ def hornersparse(x, powers, coeffs):
       whereas the return value is always a numpy.array.
 
     Usage example:
-      * y = hornersparse(x, [0, 1, 3, 15], [1, 3, 4, 5])
+      * y = hornersparse(x, [0, 1, 3, 15], [7, 9, 4, 5])
 
-        will evaluate polynomial y = 1 + 3x + 4x^3 + 5x^15 at points x.'''
+        will evaluate polynomial y = 7 + 9x + 4x^3 + 5x^15 at points x.'''
 
   # convert to np.array in case of lists...
   x = np.array(x)
@@ -50,24 +50,24 @@ def hornersparse(x, powers, coeffs):
 
 
 def remezfit(f, a, b, degree_powers, relative = False, odd = False, even = False, arg = None, weight = None, dtype = np.double, trace = False):
-  '''remezfit fits a polynomial to a function in an equiripple sense.
+  '''remezfit fits a polynomial to a function in an equi-ripple sense.
       remezfit(f, a, b, degree_powers, [, option...]) finds the
       coefficients of a polynomial P of degree `degree_powers` that fits
-      the function `f` over interval (`a`, `b`) in an equiripple sense.
-      The default behavior is to fit the polynomial with an equi-ripple
+      the function `f` over interval (`a`, `b`) in an equi-ripple sense.
+      The default behaviour is to fit the polynomial with an equi-ripple
       _absolute_ error.
     The parameter `degree_powers` can also be a list or array containing
       the desired powers in the polynomial.
     This function accepts some options (that can be entered as named
       parameters), they are:
         * `relative`: if True, the approximation shows an equi-ripple
-                      _relative_ error behavior, otherwise it works
+                      _relative_ error behaviour, otherwise it works
                       with the absolute error;
         * `odd`:      set to True if it is known that the function to
-                      be fitted shows odd simmetry around the left
+                      be fitted shows odd symmetry around the left
                       extreme of the interval;
         * `even`:     set to True if it is known that the function to
-                      be fitted shows even simmetry around the left
+                      be fitted shows even symmetry around the left
                       extreme of the interval;
         * `arg`:      fits a polynomial not in x, but in arg(x),
                       being arg a function, e.g.:
@@ -86,15 +86,10 @@ def remezfit(f, a, b, degree_powers, relative = False, odd = False, even = False
           polynomial to fit), then the fitted polynomial will be also
           odd or even, respectively.
 
-    p, prec = remezfit(f, a, b, degree_powers, [, option...]), being
-      `degree_powers` an integer, returns in `p` the fitted polynomial
-      coefficients ---starting from the lower order coefficient, thus
-      suitable to be used by numpy.polynomial.polynomial.polyval()---.
-      In case `degree_powers` is a list or array, the returned
-      polynomial coefficients array `p` will only list the coefficients
-      for the powers in `degree_powers` ---starting from the lower order
-      coefficient, thus suitable to be used by remezfit.hornersparse()
-      above---. The `prec` returned value is:
+    p, prec = remezfit(f, a, b, degree_powers, [, option...]) returns in
+      `p` the fitted polynomial coefficients ---starting from the lowest
+      order coefficient, thus suitable to be used by
+      remezfit.hornersparse() above---. The `prec` returned value is:
         * the maximum weighted absolute error, when option relative is
             False
         * the minimum number of correct digits, otherwise
@@ -336,7 +331,7 @@ if __name__ == '__main__':
   import argparse
 
   parser = argparse.ArgumentParser(
-    description = 'Fits a polynomial to a function in an equiripple sense.',
+    description = 'Fits a polynomial to a function in an equi-ripple sense.',
     epilog = 'Returns the polynomial coefficients (in increasing order) and the minimum number of correct digits if --relative is given, the maximum weighted absolute error otherwise. When specifying the arguments {f, a, b, degree_powers, ARG, WEIGHT}, it can be assumed that package numpy is imported as np.')
   parser.add_argument('f',
     help = 'function to be fitted (may be a " quoted string with a lambda expression)')
@@ -349,9 +344,9 @@ if __name__ == '__main__':
   parser.add_argument('-r', '--relative', action = 'store_true',
     help = 'fits minimizing the maximum relative error, otherwise minimizes the maximum absolute error')
   parser.add_argument('-o', '--odd', action = 'store_true',
-    help = 'the function to fit does show odd simmetry (around the left interval extreme')
+    help = 'the function to fit does show odd symmetry (around the left interval extreme)')
   parser.add_argument('-e', '--even', action = 'store_true',
-    help = 'the function to fit does show even simmetry (around the left interval extreme')
+    help = 'the function to fit does show even symmetry (around the left interval extreme)')
   parser.add_argument('-a', '--arg', default = 'None',
     help = 'if specified, it must be a function, then the argument for the polynomial will be arg(x) instead of x (ARG may be a " quoted string with a lambda expression).')
   parser.add_argument('-w', '--weight', default = 'None',
