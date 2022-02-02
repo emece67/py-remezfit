@@ -9,7 +9,7 @@ There is a single Python file here `remezfit.py` providing module `remezfit`. Th
   * `relative`: if `True`, the approximation shows an equi-ripple _relative_ error behaviour, otherwise it works with the absolute error;
   * `odd`: set it to `True` if it is known that the function to be fitted shows odd symmetry around the left extreme of the interval;
   * `even`: set it to `True` if it is known that the function to be fitted shows even symmetry around the left extreme of the interval;
-  * `arg`: fits a polynomial not in $x$, but in $arg(x)$, being `arg` a function, e.g.:
+  * `arg`: fits a polynomial not in x, but in arg(x), being `arg` a function, e.g.:
     `arg = lambda x: (x - 1) / (x + 1)`
      will fit a polynomial in $(x - 1) / (x + 1)$;
   * `weight`: specifies the function used to weight the error;
@@ -47,4 +47,31 @@ There is a single Python file here `remezfit.py` providing module `remezfit`. Th
 
   will evaluate polynomial $y = 7 + 9x + 4x^3 + 5x^{15}$ at points `x`.
 
-* File `remezfit` can also be used from the command line. 
+* File `remezfit.py` can also be used from the command line. Used this way is has this interface: `remezfit.py [-h] [-r] [-o] [-e] [-a ARG] [-w WEIGHT] [-d {half,single,double,longdouble}] [-t] f a b degree_powers`
+
+  with the following:
+
+  * positional arguments:
+    * `f`: function to be fitted (may be a " quoted string with a `lambda` expression);
+    * `a`: left extreme of the interval where the function will be fitted;
+    * `b`: right extreme of the interval where the function will be fitted;
+    * `degree_powers`: degree of the polynomial (when scalar) or powers in the polynomial (when array).
+  * options:
+    * `-h`, `--help`: show a help message and exit;
+    * `-r`, `--relative`: fits minimizing the maximum relative error, otherwise minimizes the maximum absolute error;
+    * `-o`, `--odd`: the function to fit does show odd symmetry (around the left interval extreme);
+    * `-e`, `--even`: the function to fit does show even symmetry (around the left interval extreme);
+    * `-a ARG`, `--arg ARG`: if specified, it must be a function, then the argument for the polynomial will be `arg(x)` instead of `x` (`ARG` may be a " quoted string with a `lambda` expression);
+    * `-w WEIGHT`, `--weight WEIGHT`: if specified, it must be a function, then the error will be weighted by `weight(x)` (`WEIGHT` may be a " quoted string with a `lambda` expression);
+    * `-d {half,single,double,longdouble}`, `--dtype {half,single,double,longdouble}`: the float type to be used in computations;
+    * `-t`, `--trace`: show error plots after each iteration.
+
+  When specifying the arguments {`f`, `a`, `b`, `degree_powers`, `ARG`, `WEIGHT`}, it can be assumed that package `numpy` is imported as `np`. The same usage examples as above are now, from the command line:
+
+  * `remezfit.py -r -o -d single -t "lambda x: np.sin(x)" 0 "np.pi/2" 5`
+  * `remezfit.py -e -w "lambda x: np.power(x, 2)" "lambda x: (np.cos(x) - 1)/np.power(x, 2)" 1e-15 "np.pi/2" "[0, 2, 4]"`
+  * `remezfit.py -o -a "lambda x: (x - 1) / (x + 1)" "lambda x: np.log(x)" 1 "np.sqrt(2)" 3`
+
+  `remezfit.py` will report the values of both `p` and `prec`, as above, and also show the error plots of each iteration if option `‑t` is given.
+
+Enjoy!
