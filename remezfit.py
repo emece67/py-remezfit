@@ -1,13 +1,13 @@
 # Copyright (c) 2022, emece67 - MIT License
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 import numpy as np
 from scipy.signal import find_peaks
-from scipy.linalg import solve
+from scipy.linalg import solve, lstsq
 import matplotlib.pyplot as plt
 import warnings
 
-def hornersparse(x, powers, coeffs):
+def hornersparse(x, powers, coeffs, dtype = np.double):
   '''hornersparse evaluates a polynomial using Horner's scheme managing
       the case of some, or many, coefficients being 0.
       hornersparse(x, powers, coeffs) evaluates at points `x` a polynomial
@@ -15,12 +15,14 @@ def hornersparse(x, powers, coeffs):
       `coeffs`. Both `powers` and `coeffs` must have the same number
       of elements and `powers` must be a strictly increasing sequence.
       All of `x`, `powers` and `coeffs` can be lists or numpy.arrays,
-      whereas the return value is always a numpy.array.
+      whereas the return value is always a numpy.array. `dtype` specifies
+      the numpy data type used in calculations.
 
     Usage example:
-      * y = hornersparse(x, [0, 1, 3, 15], [7, 9, 4, 5])
+      * y = hornersparse(x, [0, 1, 3, 15], [7, 9, 4, 5], dtype = numpy.single)
 
-        will evaluate polynomial y = 7 + 9x + 4x^3 + 5x^15 at points x.'''
+        will evaluate polynomial y = 7 + 9x + 4x^3 + 5x^15 at points x
+        using 'numpy.single' as data type.'''
 
   # convert to np.array in case of lists...
   x = np.array(x)
@@ -38,13 +40,13 @@ def hornersparse(x, powers, coeffs):
   if any(diff_powers <= 0):
     raise ValueError('The sequence of powers must be strictly increasing')
 
-  result = np.full_like(x, coeffs[-1])
+  result = np.full_like(x, coeffs[-1]).astype(dtype)
   coeffs = np.flip(coeffs[:-1])
   for diff_power, coeff in zip(diff_powers, coeffs):
-    result = coeff + np.power(x, diff_power) * result
+    result = coeff + np.power(x, diff_power, dtype = dtype) * result
 
   if powersi[0]:
-    result *= np.power(x, powersi[0])
+    result *= np.power(x, powersi[0], dtype = dtype)
 
   return result
 
@@ -78,7 +80,7 @@ def remezfit(f, a, b, degree_powers, relative = False, odd = False, even = False
         * `trace`:    shows the error plot resulting after each
                       iteration.
 
-        Note that options `relative` and `weigth` cannot be specified
+        Note that options `relative` and `weight` cannot be specified
           simultaneously, as both `odd` and `even` options.
 
         If any of options `odd` or `even` is specified and
@@ -86,13 +88,15 @@ def remezfit(f, a, b, degree_powers, relative = False, odd = False, even = False
           polynomial to fit), then the fitted polynomial will be also
           odd or even, respectively.
 
-    p, prec = remezfit(f, a, b, degree_powers, [, option...]) returns in
+    p, prec, ulps = remezfit(f, a, b, degree_powers, [, option...]) returns in
       `p` the fitted polynomial coefficients ---starting from the lowest
       order coefficient, thus suitable to be used by
       remezfit.hornersparse() above---. The `prec` returned value is:
         * the maximum weighted absolute error, when option relative is
             False
         * the minimum number of correct digits, otherwise
+      `ulps` is a tuple reporting the minimum and maximum error of the
+      approximation expressed as ULPs.
 
     Usage examples:
       * p, prec = remezfit(lambda x: np.sin(x), 0, np.pi/2, 5, relative = True, odd = True, dtype = np.single, trace = True)
@@ -158,7 +162,7 @@ def remezfit(f, a, b, degree_powers, relative = False, odd = False, even = False
 
   if a > b:
     a, b = b, a
-  a, b = np.array((a, b), dtype = dtype)
+  a, b = np.array((a, b), dtype = np.longdouble)  # compute with max prec
 
   # number of coefficients in the target polynomial
   n_coeffs = len(powers)
@@ -175,7 +179,7 @@ def remezfit(f, a, b, degree_powers, relative = False, odd = False, even = False
     k_w = k
 
   # initial positions of the extrema (peaks of n+1 Chebyshev polynomial)
-  c = np.cos(np.linspace(np.pi, 0, k_w, endpoint = True, dtype = dtype))
+  c = np.cos(np.linspace(np.pi, 0, k_w, endpoint = True, dtype = np.longdouble))
   if odd or even:
     c = c[k_w - k :]
     x = a + (b - a) * c
@@ -192,7 +196,7 @@ def remezfit(f, a, b, degree_powers, relative = False, odd = False, even = False
   idx = np.full(k, -m)
 
   # all values of x, arg(x), f(x) and weight(x)
-  x_plot = np.linspace(a, b, m, endpoint = True, dtype = dtype)
+  x_plot = np.linspace(a, b, m, endpoint = True, dtype = np.longdouble)
   vx_plot = arg(x_plot) if arg else x_plot
   f_plot = f(x_plot)
   if weight != None:
@@ -201,16 +205,16 @@ def remezfit(f, a, b, degree_powers, relative = False, odd = False, even = False
     w_plot = np.ones_like(x_plot)
 
   # the (now empty) coefficient matrix for the linear system
-  m_a = np.zeros((k, k), dtype = dtype)
+  m_a = np.zeros((k, k), dtype = np.longdouble)
 
   # alternating +1, -1 column (coeffs of the error term in the linear system)
-  pm1 = np.ones(k, dtype = dtype)
+  pm1 = np.ones(k, dtype = np.longdouble)
   pm1[1::2] = -1
 
   # best error of the iterations
   with warnings.catch_warnings():
     warnings.simplefilter("ignore")
-    e_best = np.finfo(dtype).max
+    e_best = np.finfo(np.longdouble).max
 
   # number of iterations
   n_iter = 4 * k
@@ -236,8 +240,9 @@ def remezfit(f, a, b, degree_powers, relative = False, odd = False, even = False
         m_a[:, np.isnan(m_a[:, -1])] = 16*max(m_a[:, -1])
     # compute new polynomial
     p = solve(m_a, m_b)[:-1].astype(dtype)
+    # p = lstsq(m_a, m_b)[0][:-1].astype(dtype)
     # compute error
-    e_plot = (hornersparse(vx_plot, powers, p) - f_plot) * w_plot
+    e_plot = (hornersparse(vx_plot, powers, p, dtype = dtype) - f_plot) * w_plot
     if relative:
       with warnings.catch_warnings():
         warnings.simplefilter("ignore")
@@ -286,8 +291,8 @@ def remezfit(f, a, b, degree_powers, relative = False, odd = False, even = False
       else:
         plt.plot(x_plot, e_max * np.ones(m), "r")
         plt.plot(x_plot, -e_max * np.ones(m), "r")
-      plt.plot(x_plot, (hornersparse(vx_plot, powers, p) - f_plot) * w_plot, "b")
-      plt.plot(x_plot[idx], (hornersparse(vx_plot[idx], powers, p) - f_plot[idx]) * w_plot[idx], "xg")
+      plt.plot(x_plot, (hornersparse(vx_plot, powers, p, dtype = dtype) - f_plot) * w_plot, "b")
+      plt.plot(x_plot[idx], (hornersparse(vx_plot[idx], powers, p, dtype = dtype) - f_plot[idx]) * w_plot[idx], "xg")
       plt.xlim((a, b))
       plt.grid(True)
       plt.pause(1)
@@ -296,7 +301,15 @@ def remezfit(f, a, b, degree_powers, relative = False, odd = False, even = False
     iter += 1
 
   # iteration ended, compute `prec` value
-  e_plot = (hornersparse(vx_plot, powers, p_best) - f_plot) * w_plot
+  fa_plot = hornersparse(vx_plot, powers, p_best, dtype = dtype)
+  e_plot = (fa_plot - f_plot) * w_plot
+  # compute error in ULPs
+  mantissa_plot, exponent_plot = np.frexp(fa_plot)
+  mantissa_plot = mantissa_plot.astype(np.longdouble)
+  mantissa_plot *= 2
+  exponent_plot -= 1
+  ulps_plot = (mantissa_plot - f_plot / np.ldexp(1, exponent_plot)) * np.ldexp(1, np.finfo(dtype).nmant)
+  ulps = (float(min(ulps_plot)), float(max(ulps_plot)))
   if relative:
     with warnings.catch_warnings():
       warnings.simplefilter("ignore")
@@ -324,7 +337,7 @@ def remezfit(f, a, b, degree_powers, relative = False, odd = False, even = False
     plt.grid(True)
     plt.pause(1)
 
-  return p, prec
+  return p_best, prec, ulps
 
 
 if __name__ == '__main__':
@@ -357,7 +370,7 @@ if __name__ == '__main__':
     help = 'show error plots after each iteration')
   args = parser.parse_args()
 
-  p, prec = remezfit(
+  p, prec, ulps = remezfit(
     f = eval(args.f),
     a = eval(args.a),
     b = eval(args.b),
@@ -371,5 +384,6 @@ if __name__ == '__main__':
     trace = args.trace)
 
   np.set_printoptions(floatmode = 'unique')
-  print('p = %s\n' % repr(p))
-  print('prec = %e\n' % prec)
+  print('p = %s' % repr(p))
+  print('prec = %e' % prec)
+  print('ULPs = (%g, %g)' % ulps)
