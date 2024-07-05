@@ -3,7 +3,7 @@
 
 import numpy as np
 from scipy.signal import find_peaks
-from scipy.linalg import solve, lstsq
+from scipy.linalg import solve
 import matplotlib.pyplot as plt
 import warnings
 
@@ -190,7 +190,7 @@ def remezfit(f, a, b, degree_powers, relative = False, odd = False, even = False
   m = min(512, 32*np.ceil((b - a) / (x[-1] - x[-2])).astype(int))
 
   # minimum required distance between maxima when looking for peaks
-  min_peak_dist = 24
+  min_peak_dist = int(m * (1 - np.cos(np.pi / k_w)) / 2)
 
   # indices for the error peaks
   idx = np.full(k, -m)
@@ -240,7 +240,6 @@ def remezfit(f, a, b, degree_powers, relative = False, odd = False, even = False
         m_a[:, np.isnan(m_a[:, -1])] = 16*max(m_a[:, -1])
     # compute new polynomial
     p = solve(m_a, m_b)[:-1].astype(dtype)
-    # p = lstsq(m_a, m_b)[0][:-1].astype(dtype)
     # compute error
     e_plot = (hornersparse(vx_plot, powers, p, dtype = dtype) - f_plot) * w_plot
     if relative:
@@ -250,10 +249,18 @@ def remezfit(f, a, b, degree_powers, relative = False, odd = False, even = False
     e_plot[np.isnan(e_plot)] = 0
     e_max = max(abs(e_plot))
     # get new locations of extrema
-    idx_new = find_peaks(abs(e_plot), distance = min_peak_dist)[0].astype(int)
-    peaks_found = idx_new.size
+    min_peak_width = 2 * m // k
+    while True:
+      min_peak_width //= 2
+      idx_new = find_peaks(abs(e_plot), distance = min_peak_dist, width = min_peak_width)[0].astype(int)
+      peaks_found = idx_new.size
+      if peaks_found >= k \
+          or peaks_found == k - 2 and idx_new[0] > min_peak_dist and idx_new[-1] < m - 1 - min_peak_dist  \
+          or peaks_found == k - 1 and (idx_new[0] > min_peak_dist or idx_new[-1] < m - 1 - min_peak_dist) \
+          or min_peak_width <= 1:
+        break
     # add interval extremes, if needed
-    if peaks_found == k - 2 and idx_new[0] != 0 and idx_new[-1] != m - 1:
+    if peaks_found == k - 2 and idx_new[0] > min_peak_dist and idx_new[-1] < m - 1 - min_peak_dist:
       idx_new = np.hstack((0, idx_new, m - 1))
     elif peaks_found == k - 1:
       if abs(e_plot[0]) < abs(e_plot[-1]) and idx_new[-1] != m - 1:
